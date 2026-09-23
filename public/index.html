@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QVAC Recipe Finder</title>
+<style>
+  body { font-family: sans-serif; background: #1a1a1a; color: #eee; text-align: center; padding: 40px; }
+  h1 { margin-bottom: 5px; }
+  p.sub { color: #999; margin-top: 0; }
+  #dishForm { max-width: 500px; margin: 30px auto; display: flex; gap: 10px; }
+  #dishInput { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: #eee; }
+  button { padding: 12px 20px; border-radius: 8px; border: none; background: #4caf50; color: white; cursor: pointer; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  #status { margin-top: 15px; color: #4caf50; }
+  #result {
+    max-width: 600px; margin: 30px auto; text-align: left;
+    background: #222; padding: 20px; border-radius: 8px; white-space: pre-wrap;
+    border: 1px solid #444; min-height: 20px;
+  }
+</style>
+</head>
+<body>
+  <h1>QVAC Recipe Finder</h1>
+  <p class="sub">On-device recipe generator — no cloud, no API key. Powered by @qvac/sdk.</p>
+
+  <form id="dishForm">
+    <input type="text" id="dishInput" placeholder="e.g. Adobo, Ramen, Paella" value="Adobo">
+    <button type="submit" id="genBtn">Get Recipe</button>
+  </form>
+
+  <div id="status"></div>
+  <div id="result"></div>
+
+<script>
+  const form = document.getElementById('dishForm');
+  const status = document.getElementById('status');
+  const result = document.getElementById('result');
+  const genBtn = document.getElementById('genBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const dish = document.getElementById('dishInput').value;
+    result.textContent = '';
+    status.textContent = 'Generating recipe on-device...';
+    genBtn.disabled = true;
+
+    try {
+      const res = await fetch('/recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dish })
+      });
+      if (!res.ok) throw new Error('Failed to generate recipe');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        result.textContent += decoder.decode(value, { stream: true });
+      }
+      status.textContent = 'Done!';
+    } catch (err) {
+      status.textContent = 'Error: ' + err.message;
+    } finally {
+      genBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
